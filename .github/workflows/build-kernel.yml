@@ -1,0 +1,106 @@
+name: build-ace-kernel
+
+# OnePlus Ace (PGKM10 / OP5565 / MT6895) builtin KernelSU + SuSFS
+# Target kernel: 5.10.236-android12-9 (ColorOS 15.0.0.1800 CN01)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+env:
+  BRANCH: oneplus/mt6895_v_15.0.0_ace
+  KSU_VERSION: "40900"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 350
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Runner is 4C/16GB with ~14GB free. Full-LTO link peaks ~12GB, so we
+      # reclaim disk first and add swap, otherwise the linker gets OOM-killed.
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          swap-storage: false
+
+      - name: Add 16G swap
+        run: |
+          sudo fallocate -l 16G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
+          df -h /
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential bc bison flex libssl-dev libelf-dev \
+            python3 python3-pip lz4 zstd cpio rsync zip unzip \
+            device-tree-compiler liblz4-tool
+          sudo ln -sf /usr/bin/python3 /usr/local/bin/python
+          pip3 install --quiet pyelftools lz4
+
+      # AOSP gitiles is unreliable from CI runners (503); this LineageOS mirror
+      # is the same r416183b build (manifest_7284624.xml matches the device).
+      - name: Fetch Android clang r416183b
+        run: |
+          set -eux
+          mkdir -p "$RUNNER_TEMP/tc/clang"
+          URL="https://codeload.github.com/LineageOS/android_prebuilts_clang_kernel_linux-x86_clang-r416183b/tar.gz/refs/heads/lineage-20.0"
+          curl -L --retry 3 --retry-delay 5 -o "$RUNNER_TEMP/tc/clang.tar.gz" "$URL"
+          tar -xzf "$RUNNER_TEMP/tc/clang.tar.gz" -C "$RUNNER_TEMP/tc/clang" --strip-components=1
+          "$RUNNER_TEMP/tc/clang/bin/clang" --version | head -3
+          cat "$RUNNER_TEMP/tc/clang/AndroidVersion.txt" || true
+
+      - name: Build
+        env:
+          OP: ${{ github.workspace }}/op
+          TC: ${{ runner.temp }}/tc/clang
+        run: |
+          mkdir -p "$OP"
+          bash scripts/build_ace_kernel.sh "$OP"
+
+      - name: Collect artifacts
+        run: |
+          set -eux
+          OP="${{ github.workspace }}/op"
+          OUT="${{ github.workspace }}/artifact"
+          mkdir -p "$OUT"
+          cp "$OP/kout/arch/arm64/boot/Image" "$OUT/Image"
+          gzip -9 -c "$OUT/Image" > "$OUT/Image.gz"
+          cp "$OP/kout/System.map"     "$OUT/System.map"     || true
+          cp "$OP/kout/Module.symvers" "$OUT/Module.symvers" || true
+          cp "$OP/kout/.config"        "$OUT/kernel.config"
+          cp "$OP/kout/kernel/config_data.gz" "$OUT/config_data.gz" || true
+          sha256sum "$OUT"/* > "$OUT/SHA256SUMS" || true
+          ls -lh "$OUT"
+
+      - name: Sanity report
+        run: |
+          OUT="${{ github.workspace }}/artifact"
+          echo "=== critical config ==="
+          grep -E '^CONFIG_(LTO_CLANG_FULL|CFI_CLANG|KASAN_HW_TAGS|SHADOW_CALL_STACK|MODVERSIONS)=y' \
+            "$OUT/kernel.config"
+          echo "=== UTS ==="
+          strings "$OUT/Image" | grep -m1 'Linux version 5.10.236' || true
+          echo "=== /proc/config.gz leak ==="
+          echo "KSU lines: $(zcat "$OUT/config_data.gz" 2>/dev/null | grep -cE 'CONFIG_KSU' || true)"
+          echo "=== exported crc ==="
+          echo "count: $(grep -c '^__crc_' "$OUT/System.map" || true)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ace-kernel
+          path: artifact/
+          retention-days: 14
