@@ -1,12 +1,10 @@
-name: build-ace-kernel
+﻿name: build-ace-kernel
 
 # OnePlus Ace (PGKM10 / OP5565 / MT6895) builtin KernelSU + SuSFS
 # Target kernel: 5.10.236-android12-9 (ColorOS 15.0.0.1800 CN01)
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 
 env:
   BRANCH: oneplus/mt6895_v_15.0.0_ace
@@ -32,14 +30,21 @@ jobs:
           large-packages: true
           swap-storage: false
 
-      - name: Add 16G swap
+      - name: Add swap (best effort)
         run: |
-          sudo fallocate -l 16G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
+          set -x
+          free -h || true
+          df -h / || true
+          SW=/mnt/swapfile_extra
+          sudo rm -f "$SW" || true
+          sudo fallocate -l 16G "$SW" || \
+            sudo dd if=/dev/zero of="$SW" bs=1M count=16384 status=none
+          sudo chmod 600 "$SW"
+          sudo mkswap "$SW" || true
+          sudo swapon "$SW" || echo "swapon failed; continuing on RAM only"
           free -h
           df -h /
+          true
 
       - name: Install build deps
         run: |
