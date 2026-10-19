@@ -100,6 +100,12 @@ sed -i 's|^GITHUB_COMMITS.*|GITHUB_COMMITS := |' "$MF" 2>/dev/null || true
 # ------------------------------------------------------------------- config
 log "config"
 cp "$HERE/configs/stock_defconfig" arch/arm64/configs/ace_defconfig
+# Deterministic UTS suffix: 5.10.236-android12-9-o-g6973d81cd2ac
+sed -i 's|^CONFIG_LOCALVERSION=.*|CONFIG_LOCALVERSION="-android12-9-o-g6973d81cd2ac"|' \
+  arch/arm64/configs/ace_defconfig
+sed -i 's|^CONFIG_LOCALVERSION_AUTO=.*|# CONFIG_LOCALVERSION_AUTO is not set|' \
+  arch/arm64/configs/ace_defconfig
+grep -E '^CONFIG_LOCALVERSION|^# CONFIG_LOCALVERSION_AUTO' arch/arm64/configs/ace_defconfig
 mkdir -p "$O"
 make -C "$K" O="$O" ace_defconfig
 cat "$HERE/configs/ksu_susfs.config" >> "$O/.config"
@@ -108,10 +114,10 @@ make -C "$K" O="$O" olddefconfig
 # Deterministic UTS: 5.10.236-android12-9-o-g6973d81cd2ac
 printf '#!/bin/sh\nexit 0\n' > scripts/setlocalversion
 chmod +x scripts/setlocalversion
-"$K/scripts/config" --file "$O/.config" \
-  --set-str LOCALVERSION "-android12-9-o-g6973d81cd2ac"
-"$K/scripts/config" --file "$O/.config" --disable LOCALVERSION_AUTO
 make -C "$K" O="$O" olddefconfig
+echo "LOCALVERSION in .config: $(grep -E '^CONFIG_LOCALVERSION=' "$O/.config")"
+grep -q '^CONFIG_LOCALVERSION="-android12-9-o-g6973d81cd2ac"' "$O/.config" || {
+  echo "FATAL: LOCALVERSION not applied" >&2; exit 1; }
 
 # /proc/config.gz must show the factory config, not ours
 cp "$HERE/configs/stock_defconfig" arch/arm64/configs/stock_defconfig
