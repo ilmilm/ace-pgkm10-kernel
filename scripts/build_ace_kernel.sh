@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # =============================================================================
 # OnePlus Ace (PGKM10 / OP5565 / MT6895) builtin KernelSU + SuSFS
 #
@@ -73,8 +73,8 @@ REJ=$(find . -name '*.rej' | wc -l)
 echo "rejects: $REJ"
 [ "$REJ" -eq 0 ] || { echo "FATAL: susfs patch rejected, fix before building" >&2; exit 1; }
 
-# MTK tree inlines the mask instead of inotify_mark_user_mask()
-sed -i 's/inotify_mark_user_mask(mark)/mask/g' fs/notify/fdinfo.c 2>/dev/null || true
+# NOTE: this tree DOES provide inotify_mark_user_mask(); do not rewrite it.
+# (The 2V device tree inlined the mask instead - different tree, different fix.)
 
 grep -q 'VMA_PAD_START' include/linux/susfs_def.h || cat >> include/linux/susfs_def.h <<'EOF'
 
