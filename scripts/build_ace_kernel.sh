@@ -87,6 +87,16 @@ REJ=$(find . -name '*.rej' | wc -l)
 echo "rejects: $REJ"
 [ "$REJ" -eq 0 ] || { echo "FATAL: susfs patch rejected, fix before building" >&2; exit 1; }
 
+# Tripwire: newer susfs patches call KSU symbols that the builtin branch does
+# not implement.  Catch it here (seconds) instead of at the vmlinux link (1 h).
+if grep -rqs 'ksu_setup_preinit_file\|ksu_preinit_handle_post_execveat\|my_setprocattr' \
+     fs/exec.c security/selinux/ 2>/dev/null; then
+  echo "FATAL: susfs patch references KSU preinit/selinux symbols this KSU does not define." >&2
+  echo "       pin a compatible susfs commit (see SUSFS_SHA above)." >&2
+  exit 1
+fi
+echo "susfs/KSU symbol compatibility: OK"
+
 # NOTE: this tree DOES provide inotify_mark_user_mask(); do not rewrite it.
 # (The 2V device tree inlined the mask instead - different tree, different fix.)
 
