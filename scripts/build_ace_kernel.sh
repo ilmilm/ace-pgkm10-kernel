@@ -81,30 +81,21 @@ cp "$S/kernel_patches/include/linux/susfs.h"      include/linux/susfs.h
 cp "$S/kernel_patches/include/linux/susfs_def.h"  include/linux/susfs_def.h
 
 log "susfs patch"
-patch -p1 --forward --no-backup-if-mismatch \
+# No --forward: this tree is a fresh clone, so a mis-applied hunk MUST produce a
+# .rej instead of being silently skipped (that is what broke the earlier build:
+# the patch added call sites but skipped the matching definitions).
+patch -p1 --no-backup-if-mismatch \
   < "$S/kernel_patches/50_add_susfs_in_gki-android12-5.10.patch" || true
 REJ=$(find . -name '*.rej' | wc -l)
 echo "rejects: $REJ"
 [ "$REJ" -eq 0 ] || { echo "FATAL: susfs patch rejected, fix before building" >&2; exit 1; }
 
-# Tripwire: the susfs patch both DEFINES and USES these helpers.  A partially
-# applied patch leaves the uses behind without the definitions, and that only
-# surfaces as an undefined-symbol error at vmlinux link (~1 h in).
-# Verify the definitions landed, not just that the names appear.
-missing=0
-for spec in \
-  "security/selinux/hooks.c:my_setprocattr(const char" \
-  "security/selinux/hooks.c:my_write_context" \
-  "fs/exec.c:ksu_setup_preinit_file" \
-  "fs/exec.c:ksu_preinit_handle_post_execveat"
-do
-  f=${spec%%:*}; sym=${spec#*:}
-  if ! grep -q "$sym" "$f" 2>/dev/null; then
-    echo "FATAL: susfs patch did not define '$sym' in $f" >&2
-    missing=1
-  fi
-done
-[ "$missing" -eq 0 ] || { echo "FATAL: partial susfs patch, aborting before the 1h build." >&2; exit 1; }
+# The susfs patch defines my_setprocattr() in hooks.c and uses it from
+# selinuxfs.c; a half-applied patch leaves the call sites without the body and
+# only fails at vmlinux link (~1 h in).  Assert the definition landed.
+grep -q 'my_setprocattr(const char' security/selinux/hooks.c || {
+  echo "FATAL: susfs patch did not define my_setprocattr() in security/selinux/hooks.c" >&2
+  exit 1; }
 echo "susfs patch self-consistency: OK"
 
 # NOTE: this tree DOES provide inotify_mark_user_mask(); do not rewrite it.
@@ -124,6 +115,20 @@ grep -q 'obj-$(CONFIG_KSU)' drivers/Makefile || \
   printf '\nobj-$(CONFIG_KSU) += kernelsu/\n' >> drivers/Makefile
 grep -q 'drivers/kernelsu/Kconfig' drivers/Kconfig || \
   sed -i '/^endmenu/i source "drivers/kernelsu/Kconfig"' drivers/Kconfig
+
+# ---------------------------------------------------------------------------
+# SukiSU `builtin` does NOT use kprobes/tracepoints: the kernel source must call
+# its hook entry points itself.  Without these, supercalls still answer (the
+# manager shows "working" + a version) but execve is never intercepted, so su
+# never escalates and ksud is never installed -> no root, no manager tabs.
+log "manual hooks"
+python3 "$HERE/scripts/add_manual_hooks.py" "$K"
+for spec in "fs/exec.c:ksu_handle_execveat" "fs/open.c:ksu_handle_faccessat" \
+            "fs/stat.c:ksu_handle_stat" "kernel/reboot.c:ksu_handle_sys_reboot"; do
+  f=${spec%%:*}; sym=${spec#*:}
+  grep -q "$sym" "$f" || { echo "FATAL: $sym missing from $f" >&2; exit 1; }
+done
+echo "hook call sites verified: 4/4"
 
 MF=KernelSU/Makefile
 sed -i 's|^\$(shell cd \$(KSU_SRC).*unshallow.*|# offline|' "$MF" 2>/dev/null || true
