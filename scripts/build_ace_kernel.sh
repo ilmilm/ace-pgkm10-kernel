@@ -42,8 +42,8 @@ log "toolchain"; clang --version | head -2
 # branch no longer defines (my_setprocattr / ksu_setup_preinit_file /
 # ksu_preinit_handle_post_execveat) -> ld.lld undefined symbol at vmlinux link.
 # 31eb14ad is the newest susfs patch that is self-consistent with this KSU.
-SUSFS_SHA=31eb14add587b0a089dfe1819f92cc94920e141e
-KSU_SHA=5ef32ad5d5eba3033f86467fd4fa094e032c5237
+SUSFS_SHA=9892175b4acec7ee844e113b8d02c0f4d12cdfac
+KSU_SHA=6c284e957feaa9a388a9f1c37dc4ec80d95e434b
 
 mkdir -p "$OP"
 log "sources"
@@ -87,15 +87,25 @@ REJ=$(find . -name '*.rej' | wc -l)
 echo "rejects: $REJ"
 [ "$REJ" -eq 0 ] || { echo "FATAL: susfs patch rejected, fix before building" >&2; exit 1; }
 
-# Tripwire: newer susfs patches call KSU symbols that the builtin branch does
-# not implement.  Catch it here (seconds) instead of at the vmlinux link (1 h).
-if grep -rqs 'ksu_setup_preinit_file\|ksu_preinit_handle_post_execveat\|my_setprocattr' \
-     fs/exec.c security/selinux/ 2>/dev/null; then
-  echo "FATAL: susfs patch references KSU preinit/selinux symbols this KSU does not define." >&2
-  echo "       pin a compatible susfs commit (see SUSFS_SHA above)." >&2
-  exit 1
-fi
-echo "susfs/KSU symbol compatibility: OK"
+# Tripwire: the susfs patch both DEFINES and USES these helpers.  A partially
+# applied patch leaves the uses behind without the definitions, and that only
+# surfaces as an undefined-symbol error at vmlinux link (~1 h in).
+# Verify the definitions landed, not just that the names appear.
+missing=0
+for spec in \
+  "security/selinux/hooks.c:my_setprocattr(const char" \
+  "security/selinux/hooks.c:my_write_context" \
+  "fs/exec.c:ksu_setup_preinit_file" \
+  "fs/exec.c:ksu_preinit_handle_post_execveat"
+do
+  f=${spec%%:*}; sym=${spec#*:}
+  if ! grep -q "$sym" "$f" 2>/dev/null; then
+    echo "FATAL: susfs patch did not define '$sym' in $f" >&2
+    missing=1
+  fi
+done
+[ "$missing" -eq 0 ] || { echo "FATAL: partial susfs patch, aborting before the 1h build." >&2; exit 1; }
+echo "susfs patch self-consistency: OK"
 
 # NOTE: this tree DOES provide inotify_mark_user_mask(); do not rewrite it.
 # (The 2V device tree inlined the mask instead - different tree, different fix.)
