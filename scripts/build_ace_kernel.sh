@@ -107,14 +107,18 @@ make -C "$K" O="$O" olddefconfig
 
 # kbuild takes the localversion suffix from scripts/setlocalversion, NOT from
 # CONFIG_LOCALVERSION directly, so the script must emit it verbatim.
-printf '#!/bin/sh\necho "-android12-9-o-g6973d81cd2ac"\n' > scripts/setlocalversion
+# Target build: PGKM10_15.0.0.500 (CN01), factory UTS
+#   5.10.209-android12-9-o-gaad6b7fc18f9
+sed -i 's/^SUBLEVEL = .*/SUBLEVEL = 209/' Makefile
+printf '#!/bin/sh\necho "-android12-9-o-gaad6b7fc18f9"\n' > scripts/setlocalversion
 chmod +x scripts/setlocalversion
 cat scripts/setlocalversion
+grep -E '^(VERSION|PATCHLEVEL|SUBLEVEL) ' Makefile
 make -C "$K" O="$O" olddefconfig
 rm -f "$O/include/config/kernel.release" "$O/include/generated/utsrelease.h"
 KR=$(make -s -C "$K" O="$O" kernelrelease)
 echo "kernelrelease: $KR"
-[ "$KR" = "5.10.236-android12-9-o-g6973d81cd2ac" ] || {
+[ "$KR" = "5.10.209-android12-9-o-gaad6b7fc18f9" ] || {
   echo "FATAL: kernelrelease is '$KR', expected factory string" >&2; exit 1; }
 
 # /proc/config.gz must show the factory config, not ours
