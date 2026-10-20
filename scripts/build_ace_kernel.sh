@@ -38,18 +38,32 @@ done
 log "toolchain"; clang --version | head -2
 
 # ------------------------------------------------------------------- sources
+# PINNED.  susfs from 5a3af83e onward references KSU symbols that the builtin
+# branch no longer defines (my_setprocattr / ksu_setup_preinit_file /
+# ksu_preinit_handle_post_execveat) -> ld.lld undefined symbol at vmlinux link.
+# 31eb14ad is the newest susfs patch that is self-consistent with this KSU.
+SUSFS_SHA=31eb14add587b0a089dfe1819f92cc94920e141e
+KSU_SHA=5ef32ad5d5eba3033f86467fd4fa094e032c5237
+
 mkdir -p "$OP"
 log "sources"
 [ -d "$K/.git" ]  || git clone -b "$BRANCH" --depth 1 \
   https://github.com/OnePlusOSS/android_kernel_5.10_oneplus_mt6895 "$K"
 [ -d "$M/.git" ]  || git clone -b "$BRANCH" --depth 1 \
   https://github.com/OnePlusOSS/android_vendor_mediatek_kernel_modules_mt6895 "$M"
-[ -d "$S/.git" ]  || git clone -b gki-android12-5.10 --depth 1 \
-  https://github.com/ShirkNeko/susfs4ksu "$S"
+if [ ! -d "$S/.git" ]; then
+  git clone https://github.com/ShirkNeko/susfs4ksu "$S"
+fi
+git -C "$S" fetch -q --depth 1 origin "$SUSFS_SHA" || true
+git -C "$S" checkout -q "$SUSFS_SHA"
+echo "susfs: $(git -C "$S" rev-parse --short HEAD)  $(git -C "$S" log -1 --format=%s)"
 if [ ! -d "$SU/.git" ]; then
   git clone https://github.com/SukiSU-Ultra/SukiSU-Ultra "$SU"
-  git -C "$SU" checkout builtin
 fi
+git -C "$SU" fetch -q --depth 1 origin "$KSU_SHA" || true
+git -C "$SU" checkout -q "$KSU_SHA"
+echo "ksu  : $(git -C "$SU" rev-parse --short HEAD)  $(git -C "$SU" log -1 --format=%s)"
+
 
 # -------------------------------------------------------------- integration
 cd "$K"
