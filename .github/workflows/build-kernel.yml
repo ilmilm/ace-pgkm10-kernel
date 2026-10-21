@@ -1,7 +1,7 @@
 ﻿name: build-ace-kernel
 
 # OnePlus Ace (PGKM10 / OP5565 / MT6895) builtin KernelSU + SuSFS
-# Target kernel: 5.10.236-android12-9 (ColorOS 15.0.0.1800 CN01)
+# Target firmware: PGKM10_15.0.0.500 (CN01) / kernel 5.10.209-android12-9-o-gaad6b7fc18f9
 
 on:
   workflow_dispatch:
