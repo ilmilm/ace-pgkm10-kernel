@@ -24,24 +24,53 @@ Actions → `build-kernel` → **Run workflow** → 选 `main` → 运行。
 `scripts/build_ace_kernel.sh` 的顺序：
 
 ```
-1. 克隆三个上游
-   ├─ OnePlusOSS/android_kernel_5.10_oneplus_mt6895        分支 oneplus/mt6895_v_15.0.0_ace
-   ├─ OnePlusOSS/android_vendor_mediatek_kernel_modules_mt6895
-   ├─ ShirkNeko/susfs4ksu                                  分支 gki-android12-5.10  ← 固定 commit
-   └─ SukiSU-Ultra/SukiSU-Ultra                            builtin 分支            ← 固定 commit
+1. 克隆四个上游（全部固定 commit，不跟分支 HEAD）
+   ├─ OnePlusOSS/android_kernel_5.10_oneplus_mt6895              ← 500 固件提交
+   ├─ OnePlusOSS/android_vendor_mediatek_kernel_modules_mt6895   ← 500 固件提交
+   ├─ ShirkNeko/susfs4ksu                                        ← 固定 commit
+   └─ SukiSU-Ultra/SukiSU-Ultra                                  ← 固定 commit
 
-2. 打 susfs 补丁（不加 --forward，打不上必须留 .rej）
-3. 断言补丁自洽（my_setprocattr 定义必须存在）
-4. 集成 KernelSU：链接到 drivers/kernelsu，挂进 drivers/Makefile + Kconfig
-5. 安装手动 hook（susfs 补丁已覆盖，脚本作兜底 + 校验 4/4）
-6. 配置：原厂 defconfig + ksu_susfs.config 片段
-7. 版本串伪装 + kernelrelease 硬断言
-8. /proc/config.gz 伪装
-9. 7 项关键 config 硬断言
-10. 编译 Image
+2. 断言源码就是 500 固件（Makefile SUBLEVEL=209 + 两个仓库的提交信息）
+3. 打 susfs 补丁（不加 --forward，打不上必须留 .rej）
+4. 断言补丁自洽（my_setprocattr 定义必须存在）
+5. 集成 KernelSU：链接到 drivers/kernelsu，挂进 drivers/Makefile + Kconfig
+6. 安装手动 hook（susfs 补丁已覆盖，脚本作兜底 + 校验 4/4）
+7. 配置：原厂 defconfig + ksu_susfs.config 片段
+8. 版本串伪装 + kernelrelease 硬断言
+9. /proc/config.gz 伪装
+10. 7 项关键 config 硬断言
+11. 编译 Image
 ```
 
-### 关键：两处版本固定
+### 关键：源码必须固定到 500 固件对应的提交
+
+```
+KERNEL_SHA=3a3edc50a4d410988728d9c4e382afa1abdc42f5   # PGKM10_15.0.0.500 (5.10.209)
+VENDOR_SHA=4c1f20261d8d489d3dca5c1dd8ac62db92b89913   # PGKM10_15.0.0.500
+```
+
+这两个仓库的分支 HEAD 是 **1800 固件 / 内核 5.10.236**，比目标设备（500 / 5.10.209）新。
+拿 236 源码去配 209 的厂商模块，`CONFIG_MODVERSIONS` 比对的符号 CRC 会漂移，CRC 变了的模块直接加载失败。
+
+实际后果：系统照常启动、KSU 照常工作、显示 WiFi 都正常，**但完全没有声音**——音频那批 `.ko` 全挂。
+这种故障极难从现象反推，所以必须在构建前断言，不能指望事后发现。
+
+CI 断言：
+
+```sh
+grep -qx 'VERSION = 5'     Makefile
+grep -qx 'PATCHLEVEL = 10' Makefile
+grep -qx 'SUBLEVEL = 209'  Makefile
+git -C "$K" log -1 --format=%s | grep -q 'PGKM10_15\.0\.0\.500'
+git -C "$M" log -1 --format=%s | grep -q 'PGKM10_15\.0\.0\.500'
+```
+
+任一不满足立即失败，不会白跑一小时。
+
+> 教训：之前拿"两份固件的 `oplus_security_guard.ko` 导入符号 CRC 31/31 一致"推断 ABI 兼容——
+> 这是错的，31 个符号不代表全部。唯一可靠的判据是**源码提交与固件版本号一致**。
+
+### 关键：susfs / KSU 版本固定
 
 ```
 SUSFS_SHA=9892175b4acec7ee844e113b8d02c0f4d12cdfac
