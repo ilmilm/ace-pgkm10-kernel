@@ -2,8 +2,8 @@
 # =============================================================================
 # OnePlus Ace (PGKM10 / OP5565 / MT6895) builtin KernelSU + SuSFS
 #
-# Target : ColorOS 15.0.0.1800 (CN01), kernel 5.10.236-android12-9
-# Source : OnePlusOSS mt6895, branch oneplus/mt6895_v_15.0.0_ace
+# Target : ColorOS 15 / PGKM10_15.0.0.500 (CN01), kernel 5.10.209-android12-9-o-gaad6b7fc18f9
+# Source : OnePlusOSS mt6895, PINNED to the PGKM10_15.0.0.500 commits (never branch heads)
 #
 # Verified on the device: LTO_CLANG_FULL / CFI_CLANG / CFI_CLANG_SHADOW /
 # SHADOW_CALL_STACK / KASAN_HW_TAGS / MODVERSIONS are all =y in the stock
@@ -47,12 +47,22 @@ KSU_SHA=6c284e957feaa9a388a9f1c37dc4ec80d95e434b
 
 mkdir -p "$OP"
 log "sources"
-# PIN THE EXACT FIRMWARE SOURCE.
-# `oneplus/mt6895_v_15.0.0_ace` HEAD is the 1800 build (kernel 5.10.236), but this
-# device runs 500 (kernel 5.10.209). Mixing them silently changes exported symbol
-# CRCs, so vendor modules built against 209 refuse to load -- audio dies while the
-# system still boots and KSU still works. 3a3edc50a4 is the 500 source.
-KERNEL_SHA=3a3edc50a4d410988728d9c4e382afa1abdc42f5
+# ===========================================================================
+# PIN THE EXACT FIRMWARE.  Target device firmware is PGKM10_15.0.0.500(CN01),
+# kernel 5.10.209-android12-9-o-gaad6b7fc18f9.
+#
+# `oneplus/mt6895_v_15.0.0_ace` HEAD is the 1800 build (kernel 5.10.236) and the
+# vendor-modules repo HEAD is 1800 too. Building that tree against this device's
+# 5.10.209 vendor modules changes exported symbol CRCs; modules whose CRCs moved
+# then refuse to load. The system still boots and KSU still works, so it looks
+# fine until you notice something dead (on this device: all audio).
+#
+# Both repos are therefore pinned to their PGKM10_15.0.0.500 commits and the
+# checkout is asserted. Never build from a branch head again.
+# ===========================================================================
+KERNEL_SHA=3a3edc50a4d410988728d9c4e382afa1abdc42f5   # PGKM10_15.0.0.500 (5.10.209)
+VENDOR_SHA=4c1f20261d8d489d3dca5c1dd8ac62db92b89913   # PGKM10_15.0.0.500
+
 if [ ! -d "$K/.git" ]; then
   git clone -b "$BRANCH" --depth 1 \
     https://github.com/OnePlusOSS/android_kernel_5.10_oneplus_mt6895 "$K"
@@ -61,8 +71,29 @@ git -C "$K" fetch -q --depth 1 origin "$KERNEL_SHA" 2>/dev/null || \
   { echo "shallow fetch failed, doing full fetch"; git -C "$K" fetch -q origin; }
 git -C "$K" checkout -q "$KERNEL_SHA"
 echo "kernel: $(git -C "$K" rev-parse --short HEAD)  $(git -C "$K" log -1 --format=%s)"
-[ -d "$M/.git" ]  || git clone -b "$BRANCH" --depth 1 \
-  https://github.com/OnePlusOSS/android_vendor_mediatek_kernel_modules_mt6895 "$M"
+
+if [ ! -d "$M/.git" ]; then
+  git clone -b "$BRANCH" --depth 1 \
+    https://github.com/OnePlusOSS/android_vendor_mediatek_kernel_modules_mt6895 "$M"
+fi
+git -C "$M" fetch -q --depth 1 origin "$VENDOR_SHA" 2>/dev/null || \
+  { echo "shallow fetch failed, doing full fetch"; git -C "$M" fetch -q origin; }
+git -C "$M" checkout -q "$VENDOR_SHA"
+echo "vendor: $(git -C "$M" rev-parse --short HEAD)  $(git -C "$M" log -1 --format=%s)"
+
+# --- guard: refuse to build if the tree is not exactly the 500 source --------
+for kv in "VERSION = 5" "PATCHLEVEL = 10" "SUBLEVEL = 209"; do
+  grep -qx "$kv" Makefile || {
+    echo "FATAL: kernel Makefile is not 5.10.209 (missing '$kv')" >&2
+    echo "       current: $(grep -E '^(VERSION|PATCHLEVEL|SUBLEVEL) =' Makefile | tr '\n' ' ')" >&2
+    exit 1; }
+done
+git -C "$K" log -1 --format=%s | grep -q 'PGKM10_15\.0\.0\.500' || {
+  echo "FATAL: kernel source commit is not PGKM10_15.0.0.500" >&2; exit 1; }
+git -C "$M" log -1 --format=%s | grep -q 'PGKM10_15\.0\.0\.500' || {
+  echo "FATAL: vendor-modules commit is not PGKM10_15.0.0.500" >&2; exit 1; }
+echo "source pin verified: kernel+vendor == PGKM10_15.0.0.500"
+
 if [ ! -d "$S/.git" ]; then
   git clone https://github.com/ShirkNeko/susfs4ksu "$S"
 fi
