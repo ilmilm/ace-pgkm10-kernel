@@ -47,8 +47,20 @@ KSU_SHA=6c284e957feaa9a388a9f1c37dc4ec80d95e434b
 
 mkdir -p "$OP"
 log "sources"
-[ -d "$K/.git" ]  || git clone -b "$BRANCH" --depth 1 \
-  https://github.com/OnePlusOSS/android_kernel_5.10_oneplus_mt6895 "$K"
+# PIN THE EXACT FIRMWARE SOURCE.
+# `oneplus/mt6895_v_15.0.0_ace` HEAD is the 1800 build (kernel 5.10.236), but this
+# device runs 500 (kernel 5.10.209). Mixing them silently changes exported symbol
+# CRCs, so vendor modules built against 209 refuse to load -- audio dies while the
+# system still boots and KSU still works. 3a3edc50a4 is the 500 source.
+KERNEL_SHA=3a3edc50a4d410988728d9c4e382afa1abdc42f5
+if [ ! -d "$K/.git" ]; then
+  git clone -b "$BRANCH" --depth 1 \
+    https://github.com/OnePlusOSS/android_kernel_5.10_oneplus_mt6895 "$K"
+fi
+git -C "$K" fetch -q --depth 1 origin "$KERNEL_SHA" 2>/dev/null || \
+  { echo "shallow fetch failed, doing full fetch"; git -C "$K" fetch -q origin; }
+git -C "$K" checkout -q "$KERNEL_SHA"
+echo "kernel: $(git -C "$K" rev-parse --short HEAD)  $(git -C "$K" log -1 --format=%s)"
 [ -d "$M/.git" ]  || git clone -b "$BRANCH" --depth 1 \
   https://github.com/OnePlusOSS/android_vendor_mediatek_kernel_modules_mt6895 "$M"
 if [ ! -d "$S/.git" ]; then
