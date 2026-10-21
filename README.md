@@ -194,9 +194,23 @@ docs/troubleshooting.md              踩过的坑与排查方法
 
 OPPO 的提权拦截整体失效。副作用是部分检测类 App 可能有反应——但这是拿到 root 的前提。
 
-**4. 内核源码是 5.10.236 分支，配置按 209 取值**
+**4. 内核源码固定到 500 固件对应的提交，不跟分支 HEAD**
 
-厂商 `.ko` 的 `__versions` CRC 两份固件实测一致（31/31），ABI 兼容。
+```
+kernel  : OnePlusOSS/android_kernel_5.10_oneplus_mt6895
+          3a3edc50a4d410988728d9c4e382afa1abdc42f5   PGKM10_15.0.0.500 (5.10.209)
+vendor  : OnePlusOSS/android_vendor_mediatek_kernel_modules_mt6895
+          4c1f20261d8d489d3dca5c1dd8ac62db92b89913   PGKM10_15.0.0.500
+```
+
+**这一点不能马虎。** 那两个仓库的分支 HEAD 是 **1800 固件（内核 5.10.236）**。拿 236 的源码去配 209 的厂商模块，
+`CONFIG_MODVERSIONS` 比对的符号 CRC 会漂移，CRC 变了的模块直接加载失败。
+
+踩过一次：编 236 出来的内核，系统正常启动、KSU 正常工作，**但完全没有声音**——音频那批 `.ko` 加载失败。
+换回 500 源码即解决。
+
+CI 里有硬断言：内核 `Makefile` 必须是 `5.10.209`，两个仓库的提交信息必须含 `PGKM10_15.0.0.500`，
+不满足直接失败，不会白跑一小时。
 
 ---
 
