@@ -2,25 +2,35 @@
 
 ## 前提
 
-- 当前运行槽 `_b`，`_a` 保持原厂（最后一道保险）
+**先查自己手机在哪个槽，别照抄下面的 `_b`：**
+
+```bash
+adb shell getprop ro.boot.slot_suffix      # 输出 _a 还是 _b
+```
+
+- 本文命令以 `_b` 为例。**你查到什么槽，就把命令里的 `_b` 换成那个**
+- 只动当前槽的分区，另一个槽保持原厂（最后一道保险）
 - 三个镜像必须配套，缺一不可
-- 刷之前先确认工程线 / BROM 能写 `lk`，否则不要动 `lk_b`
+- 刷之前先确认工程线 / BROM 能写 `lk`，否则不要动 `lk_?`
+- 本仓库 `stock-500` 是 **`_b` 槽的 readback**；你在 `_a` 槽就得自己 readback 一份，或先切槽
 
 ## 刷写顺序（不能变）
 
 ```bash
 # 1) lk — 必须最先，它是让改过的镜像能被接受的前提
-fastboot flash lk_b lk.img
+fastboot flash lk_b patched-lk.img
 fastboot reboot
 
 # 2) vendor_boot — 去掉安全守卫模块，root 才能真正拿到
-fastboot flash vendor_boot_b vendor_boot.img
+fastboot flash vendor_boot_b patched-vendor_boot.img
 fastboot reboot
 
 # 3) boot — 自编内核
-fastboot flash boot_b boot.img
+fastboot flash boot_b patched-boot.img
 fastboot reboot
 ```
+
+> 上文以 `_b` 槽为例。`_a` 槽请换成 `lk_a` / `vendor_boot_a` / `boot_a`。
 
 ### 为什么顺序不能反
 
@@ -56,13 +66,13 @@ adb shell getprop ro.boot.vbmeta.device_state  # locked
 原厂镜像在 [Release `stock-500`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/stock-500)。
 
 ```bash
-fastboot flash lk_b           原厂lk_b.img
-fastboot flash vendor_boot_b  原厂vendor_boot_b.img
-fastboot flash boot_b         原厂boot_b.img
+# 以 _b 槽为例；_a 槽换成 lk_a / vendor_boot_a / boot_a，并按槽取原版镜像
+fastboot flash lk_b           原版lk_b.img
+fastboot flash vendor_boot_b  原版vendor_boot_b.img
+fastboot flash boot_b         原版boot_b.img
 ```
 
-可以分步回滚，但要注意：**如果先回滚 `lk_b` 而 `boot`/`vendor_boot` 还是改过的，会立刻「文件损坏」**。
-正确顺序是反过来的：先回 `boot` 和 `vendor_boot` 不现实（没有 lk 补丁它们验不过），所以**三个一起刷回**最省事。
+**三个一起刷回。** 不要只回滚 `lk_?`——那样 `boot`/`vendor_boot` 还是改过的，没有 lk 补丁放行会立刻「文件损坏」。
 
 ## 出事怎么办
 
