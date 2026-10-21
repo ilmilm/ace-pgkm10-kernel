@@ -82,10 +82,12 @@ git -C "$M" checkout -q "$VENDOR_SHA"
 echo "vendor: $(git -C "$M" rev-parse --short HEAD)  $(git -C "$M" log -1 --format=%s)"
 
 # --- guard: refuse to build if the tree is not exactly the 500 source --------
+# NOTE: cwd is still the workflow checkout at this point (`cd "$K"` comes later),
+# so every kernel-tree path must go through $K.
 for kv in "VERSION = 5" "PATCHLEVEL = 10" "SUBLEVEL = 209"; do
-  grep -qx "$kv" Makefile || {
+  grep -qx "$kv" "$K/Makefile" || {
     echo "FATAL: kernel Makefile is not 5.10.209 (missing '$kv')" >&2
-    echo "       current: $(grep -E '^(VERSION|PATCHLEVEL|SUBLEVEL) =' Makefile | tr '\n' ' ')" >&2
+    echo "       current: $(grep -E '^(VERSION|PATCHLEVEL|SUBLEVEL) =' "$K/Makefile" | tr '\n' ' ')" >&2
     exit 1; }
 done
 git -C "$K" log -1 --format=%s | grep -q 'PGKM10_15\.0\.0\.500' || {
