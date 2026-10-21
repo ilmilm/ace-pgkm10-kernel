@@ -37,14 +37,16 @@ su -c id  →  uid=0(root) gid=0(root) groups=0(root) context=u:r:ksu:s0
 
 | Release | 内容 | 用途 |
 |---|---|---|
-| **[`v1.0`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/v1.0)** | `patched-boot.img` / `patched-vendor_boot.img` / `patched-lk.img` | **产物**，已修改，刷这个拿 root |
+| **[`v1.1`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/v1.1)** | `patched-boot.img` / `patched-vendor_boot.img` / `patched-lk.img` | **产物**，已修改，刷这个拿 root |
 | **[`stock-500`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/stock-500)** | `boot_b.img` / `vendor_boot_b.img` / `lk_b.img` | **原版**，未做任何修改，回滚和重新打包用 |
 
-### 产物（`v1.0`）
+> `v1.0` 已废弃：那版 `patched-boot.img` 用 1800/5.10.236 源码编的，刷上去会静音，资产已删除。
+
+### 产物（`v1.1`）
 
 | 产物文件 | 刷到分区 | sha256 | 改了什么 |
 |---|---|---|---|
-| `patched-boot.img` | `boot_b` | `fc43b1f428bf9dbda2ff2c428e348e91c0095f433c98a999385e72ab487fa2fa` | 自编内核（KSU 内建 + SuSFS）。ramdisk 与原版逐字节相同，vbmeta 原样搬运 |
+| `patched-boot.img` | `boot_b` | `451a135f647c30bf0742dd05785d006ea8bf5a2baea895e12f9c4d759b4b46d6` | 自编内核（KSU 内建 + SuSFS）。ramdisk 与原版逐字节相同，vbmeta 原样搬运 |
 | `patched-vendor_boot.img` | `vendor_boot_b` | `ff40af8191655377c0be69c200275c7b9c0fed4548c871be3c026db3ce331072` | 删除 `oplus_security_guard.ko` 及其加载项（928 → 927 条目） |
 | `patched-lk.img` | `lk_b` | `eb8852f13e3e3765897d0bf7c9658305cacdb18e52f76630ca0f18e1d49eac93` | 证书链 legacy 注入 + 只跳过 boot 验签 + 启动状态强制 green + `device_state` 强制 locked |
 
@@ -75,7 +77,7 @@ patched-boot.img        → 决定有没有 root 功能（KSU 内核本体）
 
 ### 只想刷
 
-从 [`v1.0`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/v1.0) 下三个文件。
+从 [`v1.1`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/v1.1) 下三个文件。
 
 **先查当前槽位**，下面的命令以 `_b` 为例，按你实际查到的替换：
 
