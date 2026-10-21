@@ -31,53 +31,59 @@ su -c id  →  uid=0(root) gid=0(root) groups=0(root) context=u:r:ksu:s0
 
 ---
 
-## 三个镜像
+## 原版 vs 产物
 
-产物体积太大不适合放 Git，需要的话自己按 [`docs/build.md`](docs/build.md) 编或提 Issue。
+两个 Release 分开存放，**别搞混**：
 
-| 文件 | 改了什么 |
-|---|---|
-| `boot.img` | 自编内核（KSU 内建 + SuSFS）。ramdisk 与原厂逐字节相同，vbmeta 原样搬运 |
-| `vendor_boot.img` | 删除 `oplus_security_guard.ko` 及其加载项（928 → 927 条目） |
-| `lk.img` | 证书链 legacy 注入 + 只跳过 boot 验签 + 启动状态强制 green + `device_state` 强制 locked |
+| Release | 内容 | 用途 |
+|---|---|---|
+| **[`v1.0`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/v1.0)** | `patched-boot.img` / `patched-vendor_boot.img` / `patched-lk.img` | **产物**，已修改，刷这个拿 root |
+| **[`stock-500`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/stock-500)** | `boot_b.img` / `vendor_boot_b.img` / `lk_b.img` | **原版**，未做任何修改，回滚和重新打包用 |
+
+### 产物（`v1.0`）
+
+| 产物文件 | 刷到分区 | sha256 | 改了什么 |
+|---|---|---|---|
+| `patched-boot.img` | `boot_b` | `fc43b1f428bf9dbda2ff2c428e348e91c0095f433c98a999385e72ab487fa2fa` | 自编内核（KSU 内建 + SuSFS）。ramdisk 与原版逐字节相同，vbmeta 原样搬运 |
+| `patched-vendor_boot.img` | `vendor_boot_b` | `ff40af8191655377c0be69c200275c7b9c0fed4548c871be3c026db3ce331072` | 删除 `oplus_security_guard.ko` 及其加载项（928 → 927 条目） |
+| `patched-lk.img` | `lk_b` | `eb8852f13e3e3765897d0bf7c9658305cacdb18e52f76630ca0f18e1d49eac93` | 证书链 legacy 注入 + 只跳过 boot 验签 + 启动状态强制 green + `device_state` 强制 locked |
 
 **三者必须配套使用，缺一不可。** 依赖关系：
 
 ```
-lk.img          → 决定能不能启动（preloader 证书校验 + AVB 门禁）
-vendor_boot.img → 决定能不能拿到 root（安全守卫模块会杀掉提权进程）
-boot.img        → 决定有没有 root 功能（KSU 内核本体）
+patched-lk.img          → 决定能不能启动（preloader 证书校验 + AVB 门禁）
+patched-vendor_boot.img → 决定能不能拿到 root（安全守卫模块会杀掉提权进程）
+patched-boot.img        → 决定有没有 root 功能（KSU 内核本体）
 ```
 
----
+### 原版（`stock-500`）
 
-## 原版固件基线
+由 GeekFlashTool 从设备 readback，未做任何修改。是回滚目标，也是 `pack_boot.py` 的输入。
 
-回滚和重新构建都需要原厂镜像，放在 Release：
+| 原版文件 | 分区 | sha256 |
+|---|---|---|
+| `boot_b.img` | `boot_b` | `42baddf6915d02512de28833f532c11d4ce76cf9753379695f3b76a0c952df45` |
+| `vendor_boot_b.img` | `vendor_boot_b` | `04f08ec4e44ee99609760ff24c79af66bf15c670111a5ec9f3d315924227208a` |
+| `lk_b.img` | `lk_b` | `9c1fb6a99f13fd21a95cf5f69b8f24eac7e06684e5cc975bcf414b8d57706ef2` |
 
-**[`stock-500`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/stock-500)**
+两个 Release 各附一份 `SHA256SUMS.txt`，可直接 `sha256sum -c` 校验。
 
-| 文件 | sha256 |
-|---|---|
-| `boot_b.img` | `42baddf6915d02512de28833f532c11d4ce76cf9753379695f3b76a0c952df45` |
-| `vendor_boot_b.img` | `04f08ec4e44ee99609760ff24c79af66bf15c670111a5ec9f3d315924227208a` |
-| `lk_b.img` | `9c1fb6a99f13fd21a95cf5f69b8f24eac7e06684e5cc975bcf414b8d57706ef2` |
-
-来源：GeekFlashTool 从设备 readback，未做任何修改。
 
 ---
 
 ## 快速开始
 
-### 只想刷（需要有对应产物）
+### 只想刷
+
+从 [`v1.0`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/v1.0) 下三个文件。
 
 ```bash
 # 当前运行槽 _b，_a 保持原厂不动
-fastboot flash lk_b           lk.img
+fastboot flash lk_b           patched-lk.img
 fastboot reboot
-fastboot flash vendor_boot_b  vendor_boot.img
+fastboot flash vendor_boot_b  patched-vendor_boot.img
 fastboot reboot
-fastboot flash boot_b         boot.img
+fastboot flash boot_b         patched-boot.img
 fastboot reboot
 ```
 
