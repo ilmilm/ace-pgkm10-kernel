@@ -211,3 +211,51 @@ adb shell su -c 'ls -l /data/adb/ksud'   # ksud 在不在
   改用 `adb shell screencap -p /sdcard/x.png` 然后 `adb pull`。
 - `Set-Content -Encoding utf8` 会写 BOM，导致文档变乱码 / URL 上传失败。
   用 `[IO.File]::WriteAllText($p, $t, (New-Object Text.UTF8Encoding($false)))`。
+
+---
+
+## 13. 刷完内核没声音（或某个硬件哑了）
+
+**现象**：系统正常启动、KSU 正常、显示 WiFi 都正常，但**完全没有声音**。没有报错。
+
+**根因**：内核源码版本与设备固件不匹配。
+
+`oneplus/mt6895_v_15.0.0_ace` 分支 HEAD 是 **1800 固件 / 内核 5.10.236**，
+而设备跑的是 **500 固件 / 内核 5.10.209**。
+
+两个版本的源码导出的符号 CRC 不完全相同。`CONFIG_MODVERSIONS=y` 时，厂商 `.ko` 加载要逐个比对
+它依赖的每个符号 CRC，对不上就拒绝加载。大部分模块恰好没变化，系统能起来；
+但音频那批模块的符号变了，全部加载失败 → 哑。
+
+**为什么难发现**：模块加载失败只写 dmesg，不弹任何 UI 提示。而 `lsmod` 少几个模块，不专门看根本注意不到。
+
+**定位**：
+
+```bash
+su -c 'dmesg | grep -iE "disagrees about version|no symbol version|Unknown symbol"'
+su -c 'lsmod | wc -l; ls /vendor/lib/modules/*.ko | wc -l'
+```
+
+出现 `disagrees about version of symbol xxx` 就是 CRC 不匹配。
+
+**处理**：源码固定到与固件版本号一致的提交。
+
+```
+kernel  OnePlusOSS/android_kernel_5.10_oneplus_mt6895
+        3a3edc50a4d410988728d9c4e382afa1abdc42f5   PGKM10_15.0.0.500 (5.10.209)
+vendor  OnePlusOSS/android_vendor_mediatek_kernel_modules_mt6895
+        4c1f20261d8d489d3dca5c1dd8ac62db92b89913   PGKM10_15.0.0.500
+```
+
+**判断源码对不对**：
+
+```bash
+grep -E '^(VERSION|PATCHLEVEL|SUBLEVEL) =' Makefile     # 必须 5 / 10 / 209
+git log -1 --format=%s                                   # 必须含 PGKM10_15.0.0.500
+```
+
+**教训**：不要用"某个模块的导入符号 CRC 一致"来推断整体 ABI 兼容。
+之前核对过两份固件的 `oplus_security_guard.ko`，31 个导入符号 CRC 全一致，
+据此认定 ABI 兼容——**结论是错的**，31 个符号代表不了全部。
+唯一可靠判据是**源码提交与固件版本号一致**。
+
