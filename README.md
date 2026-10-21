@@ -77,8 +77,14 @@ patched-boot.img        → 决定有没有 root 功能（KSU 内核本体）
 
 从 [`v1.0`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/v1.0) 下三个文件。
 
+**先查当前槽位**，下面的命令以 `_b` 为例，按你实际查到的替换：
+
 ```bash
-# 当前运行槽 _b，_a 保持原厂不动
+adb shell getprop ro.boot.slot_suffix      # _a 或 _b
+```
+
+```bash
+# 以 _b 槽为例；_a 槽请把命令里的 _b 全部换成 _a
 fastboot flash lk_b           patched-lk.img
 fastboot reboot
 fastboot flash vendor_boot_b  patched-vendor_boot.img
@@ -196,9 +202,19 @@ OPPO 的提权拦截整体失效。副作用是部分检测类 App 可能有反�
 
 ## 风险提示
 
-- **`lk_b` 刷错 = 不亮机 + 没有 fastboot**，只能靠 BROM / 工程线救。刷之前先确认 `mtk` 工具能列出分区表。
-- 所有操作只动 `_b` 槽，`_a` 保持原厂，是最后一道保险。
-- 自己负责自己的设备。
+**刷之前先查自己手机在哪个槽，别照抄下面的 `_b`。**
+
+```bash
+adb shell getprop ro.boot.slot_suffix      # 输出 _a 还是 _b
+```
+
+- 本文所有命令都写成 `_b`。**你查到什么槽，就把命令里的 `_b` 换成那个**，例如 `fastboot flash lk_a ...`
+- 原版镜像同样按槽取。本仓库 `stock-500` 里是 **`_b` 槽的 readback**；如果你在 `_a` 槽，
+  要么自己从设备 readback 一份 `_a` 的，要么切换槽位再用本仓库的镜像
+- **`lk_?` 刷错 = 不亮机 + 没有 fastboot**，只能靠 BROM / 工程线救。刷之前先确认 `mtk` 工具能列出分区表
+- 只动当前槽的分区，另一个槽保持原厂，是最后一道保险
+- 自己负责自己的设备
+
 
 ## 许可
 
