@@ -1,4 +1,4 @@
-﻿name: build-ace-kernel
+name: build-ace-kernel
 
 # OnePlus Ace (PGKM10 / OP5565 / MT6895) builtin KernelSU + SuSFS
 # Target firmware: PGKM10_15.0.0.500 (CN01) / kernel 5.10.209-android12-9-o-gaad6b7fc18f9
@@ -98,7 +98,7 @@ jobs:
           grep -E '^CONFIG_(LTO_CLANG_FULL|CFI_CLANG|KASAN_HW_TAGS|SHADOW_CALL_STACK|MODVERSIONS)=y' \
             "$OUT/kernel.config"
           echo "=== UTS ==="
-          strings "$OUT/Image" | grep -m1 'Linux version 5.10.236' || true
+          strings "$OUT/Image" | grep -m1 'Linux version 5.10.209' || true
           echo "=== /proc/config.gz leak ==="
           echo "KSU lines: $(zcat "$OUT/config_data.gz" 2>/dev/null | grep -cE 'CONFIG_KSU' || true)"
           echo "=== exported crc ==="
