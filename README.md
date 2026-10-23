@@ -29,30 +29,31 @@ su -c id  →  uid=0(root) gid=0(root) groups=0(root) context=u:r:ksu:s0
 | KernelSU | `工作中` / `Built-in` / `40994` |
 | SuSFS | `v2.3.0 (SUSFS Inline Hook)`，`ksud susfs status` = `true` |
 | `/proc/config.gz` 里 `CONFIG_KSU` | **0 条**（伪造为原厂配置） |
-| `/proc/kallsyms` 里 `ksu_`/`susfs_` | **0 条**（符号隐藏生效） |
+| `/proc/kallsyms` 里的 `ksu_`/`susfs_` | 非 root **读不到**（`EACCES`）；root 下能列出 10 个名字，但地址全是 `0000000000` |
 | 管理器页签 | 主页 / 超级用户 / 模块 / 设置 全部正常 |
 
 ---
 
 ## 原版 vs 产物
 
-两个 Release 分开存放，**别搞混**：
+Release 分开存放，**别搞混**：
 
 | Release | 内容 | 用途 |
 |---|---|---|
-| **[`v1.1`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/v1.1)** | `patched-boot.img` / `patched-vendor_boot.img` / `patched-lk.img` | **产物**，已修改，刷这个拿 root |
+| **[`v1.2`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/v1.2)** | `patched-boot.img` | **最新内核**（KSU 4.2.1 / `40994`） |
+| **[`v1.1`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/v1.1)** | `patched-vendor_boot.img` / `patched-lk.img` | 另外两个分区，与 v1.2 配套使用 |
 | **[`stock-500`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/stock-500)** | `boot_b.img` / `vendor_boot_b.img` / `lk_b.img` | **原版**，未做任何修改，回滚和重新打包用 |
 
-> `v1.0` 已整版删除，产物全部下架。**只有 `v1.1` 可用。**
+> `v1.0` 已整版删除，产物全部下架。
 > 本项目只支持 `PGKM10_15.0.0.500` / 内核 `5.10.209`，不提供、也不再讨论其他固件版本。
 
-### 产物（`v1.1`）
+### 产物（`v1.2` 内核 + `v1.1` 的 lk/vendor_boot）
 
-| 产物文件 | 刷到分区 | sha256 | 改了什么 |
-|---|---|---|---|
-| `patched-boot.img` | `boot_b` | `451a135f647c30bf0742dd05785d006ea8bf5a2baea895e12f9c4d759b4b46d6` | 自编内核（KSU 内建 + SuSFS）。ramdisk 与原版逐字节相同，vbmeta 原样搬运 |
-| `patched-vendor_boot.img` | `vendor_boot_b` | `ff40af8191655377c0be69c200275c7b9c0fed4548c871be3c026db3ce331072` | 删除 `oplus_security_guard.ko` 及其加载项（928 → 927 条目） |
-| `patched-lk.img` | `lk_b` | `eb8852f13e3e3765897d0bf7c9658305cacdb18e52f76630ca0f18e1d49eac93` | 证书链 legacy 注入 + 只跳过 boot 验签 + 启动状态强制 green + `device_state` 强制 locked |
+| 产物文件 | 出处 | 刷到分区 | sha256 | 改了什么 |
+|---|---|---|---|---|
+| `patched-boot.img` | `v1.2` | `boot_b` | `341bd49b4ec488e827950cadcf72ce7bd1c052df52e9dcd78e036a744c877a0c` | 自编内核（SukiSU 4.2.1 `40994` + SuSFS v2.3.0 inline hook）。ramdisk 与原版逐字节相同，vbmeta 原样搬运 |
+| `patched-vendor_boot.img` | `v1.1` | `vendor_boot_b` | `ff40af8191655377c0be69c200275c7b9c0fed4548c871be3c026db3ce331072` | 删除 `oplus_security_guard.ko` 及其加载项（928 → 927 条目） |
+| `patched-lk.img` | `v1.1` | `lk_b` | `eb8852f13e3e3765897d0bf7c9658305cacdb18e52f76630ca0f18e1d49eac93` | 证书链 legacy 注入 + 只跳过 boot 验签 + 启动状态强制 green + `device_state` 强制 locked |
 
 **三者必须配套使用，缺一不可。** 依赖关系：
 
@@ -72,7 +73,7 @@ patched-boot.img        → 决定有没有 root 功能（KSU 内核本体）
 | `vendor_boot_b.img` | `vendor_boot_b` | `04f08ec4e44ee99609760ff24c79af66bf15c670111a5ec9f3d315924227208a` |
 | `lk_b.img` | `lk_b` | `9c1fb6a99f13fd21a95cf5f69b8f24eac7e06684e5cc975bcf414b8d57706ef2` |
 
-两个 Release 各附一份 `SHA256SUMS.txt`，可直接 `sha256sum -c` 校验。
+每个 Release 各附一份 `SHA256SUMS.txt`，可直接 `sha256sum -c` 校验。
 
 
 ---
@@ -81,7 +82,10 @@ patched-boot.img        → 决定有没有 root 功能（KSU 内核本体）
 
 ### 只想刷
 
-从 [`v1.1`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/v1.1) 下三个文件。
+从 [`v1.2`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/v1.2) 下 `patched-boot.img`，
+再从未升级的 [`v1.1`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/v1.1) 下 `patched-vendor_boot.img` 和 `patched-lk.img`。
+
+**已经刷过 v1.1 的，只刷 `boot` 这一个就行**（lk / vendor_boot 与内核版本无关，不用重刷）。
 
 **先查当前槽位**，下面的命令以 `_b` 为例，按你实际查到的替换：
 
@@ -144,8 +148,8 @@ preloader 用 CERT1/CERT2（RSA-2048 + RSASSA-PSS）校验 `lk`。没有私钥�
 必须用验证过的组合：
 
 ```
-SukiSU-Ultra  builtin              6c284e957feaa9a388a9f1c37dc4ec80d95e434b
-susfs4ksu     gki-android12-5.10   9892175b4acec7ee844e113b8d02c0f4d12cdfac
+SukiSU-Ultra  builtin              ce75122bec7423e0f1fa06e3e9a174085c5231ab
+susfs4ksu     gki-android12-5.10   f43926dc94b8ffbf9b74321313536600f69367b1
 ```
 
 **6. 7 项 config 一个都不能丢**

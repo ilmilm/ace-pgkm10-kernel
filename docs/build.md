@@ -75,18 +75,19 @@ git -C "$M" log -1 --format=%s | grep -q 'PGKM10_15\.0\.0\.500'
 ### 关键：susfs / KSU 版本固定
 
 ```
-SUSFS_SHA=9892175b4acec7ee844e113b8d02c0f4d12cdfac
-KSU_SHA=6c284e957feaa9a388a9f1c37dc4ec80d95e434b
+SUSFS_SHA=f43926dc94b8ffbf9b74321313536600f69367b1
+KSU_SHA=ce75122bec7423e0f1fa06e3e9a174085c5231ab
 ```
 
-**这两个 commit 是验证过能工作的组合，不要随意升级。**
+**这两个 commit 是 2026-10-23 真机验证过的组合，不要随意升级。** 升级时 KSU 与 susfs 必须**同代**。
 
-用 2026-10-19 之后的新提交会踩两个坑：
+踩过的两个坑：
 
 - susfs 引用了 KSU builtin 分支不存在的符号 → vmlinux 链接期 undefined symbol
 - 两者版本错配 → inline hook 静默失效，管理器显示「工作中」但 `su` 根本没有
 
 判断方法：管理器能读出版本号 = supercall 通；`su` 不可用 = hook 没生效。
+另有一条硬绑定：内核 `KSU_VERSION` 必须等于管理器 build 号（现在都是 `40994`）。
 
 ### 关键：版本串伪装
 

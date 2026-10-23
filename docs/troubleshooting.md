@@ -75,8 +75,8 @@ supercall 不依赖 hook，所以管理器能读版本；但 execve 从不被拦
 **处理**：固定到验证过的组合：
 
 ```
-SukiSU-Ultra  builtin              6c284e957feaa9a388a9f1c37dc4ec80d95e434b
-susfs4ksu     gki-android12-5.10   9892175b4acec7ee844e113b8d02c0f4d12cdfac
+SukiSU-Ultra  builtin              ce75122bec7423e0f1fa06e3e9a174085c5231ab
+susfs4ksu     gki-android12-5.10   f43926dc94b8ffbf9b74321313536600f69367b1
 ```
 
 **判断口诀**：能读版本 = supercall 通；`su` 不可用 = hook 没生效。
