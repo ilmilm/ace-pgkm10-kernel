@@ -105,10 +105,9 @@ fastboot flash boot_b         原版boot_b.img
 
 ## 管理器
 
-装 `SukiSU_v4.2.1_40994-release.apk`。
+装 `SukiSU_v4.2.1-r1_41049-release.apk`。
 
-内核里编死的 `KSU_VERSION` 必须和这个 build 号一致（现在都是 `40994`）。改内核版本号就要同时换管理器，
-否则会一直提示有新版本。
+配对看 **UAPI 版本**（现在两边都是 6），不看 build 号；UAPI 高的一侧会提示更新另一侧。
 
 装完之后打开一次管理器，它需要拿到 root 才会把 `ksud` 装进 `/data/adb/`：
 

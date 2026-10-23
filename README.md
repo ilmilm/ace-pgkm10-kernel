@@ -26,7 +26,7 @@ su -c id  →  uid=0(root) gid=0(root) groups=0(root) context=u:r:ksu:s0
 | `ro.boot.flash.locked` | **1** |
 | `ro.boot.vbmeta.device_state` | **locked**（LK 强制输出；硬件真实状态仍是 unlocked） |
 | SELinux | **Enforcing**（不需要宽容模式） |
-| KernelSU | `工作中` / `Built-in` / `40994` |
+| KernelSU | `工作中` / `Built-in` / `40994-6` |
 | SuSFS | `v2.3.0 (SUSFS Inline Hook)`，`ksud susfs status` = `true` |
 | `/proc/config.gz` 里 `CONFIG_KSU` | **0 条**（伪造为原厂配置） |
 | `/proc/kallsyms` 里的 `ksu_`/`susfs_` | 非 root **读不到**（`EACCES`）；root 下能列出 10 个名字，但地址全是 `0000000000` |
@@ -40,7 +40,7 @@ Release 分开存放，**别搞混**：
 
 | Release | 内容 | 用途 |
 |---|---|---|
-| **[`v1.2`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/v1.2)** | `patched-boot.img` | **最新内核**（KSU 4.2.1 / `40994`） |
+| **[`v1.2`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/v1.2)** | `patched-boot.img` | **最新内核**（KSU `40994-6` + SuSFS v2.3.0） |
 | **[`v1.1`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/v1.1)** | `patched-vendor_boot.img` / `patched-lk.img` | 另外两个分区，与 v1.2 配套使用 |
 | **[`stock-500`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/stock-500)** | `boot_b.img` / `vendor_boot_b.img` / `lk_b.img` | **原版**，未做任何修改，回滚和重新打包用 |
 
@@ -51,7 +51,7 @@ Release 分开存放，**别搞混**：
 
 | 产物文件 | 出处 | 刷到分区 | sha256 | 改了什么 |
 |---|---|---|---|---|
-| `patched-boot.img` | `v1.2` | `boot_b` | `341bd49b4ec488e827950cadcf72ce7bd1c052df52e9dcd78e036a744c877a0c` | 自编内核（SukiSU 4.2.1 `40994` + SuSFS v2.3.0 inline hook）。ramdisk 与原版逐字节相同，vbmeta 原样搬运 |
+| `patched-boot.img` | `v1.2` | `boot_b` | `341bd49b4ec488e827950cadcf72ce7bd1c052df52e9dcd78e036a744c877a0c` | 自编内核（SukiSU `40994-6` + SuSFS v2.3.0 inline hook）。ramdisk 与原版逐字节相同，vbmeta 原样搬运 |
 | `patched-vendor_boot.img` | `v1.1` | `vendor_boot_b` | `ff40af8191655377c0be69c200275c7b9c0fed4548c871be3c026db3ce331072` | 删除 `oplus_security_guard.ko` 及其加载项（928 → 927 条目） |
 | `patched-lk.img` | `v1.1` | `lk_b` | `eb8852f13e3e3765897d0bf7c9658305cacdb18e52f76630ca0f18e1d49eac93` | 证书链 legacy 注入 + 只跳过 boot 验签 + 启动状态强制 green + `device_state` 强制 locked |
 
@@ -113,11 +113,12 @@ fastboot reboot
 ### 配套管理器
 
 ```
-SukiSU_v4.2.1_40994-release.apk
+SukiSU_v4.2.1-r1_41049-release.apk
 ```
 
-**内核里编死的 `KSU_VERSION` 必须和管理器 build 号一致**（现在都是 `40994`）。
-管理器版本高于内核时报"有新版本"，低于内核时部分功能不可用；两者不一致不会影响 `su`，但会一直提示。
+**配对判据是 UAPI 版本，不是 build 号。** 现在内核 `40994-6`、管理器 `41049-6`，两边 UAPI 都是 6，共存无提示。
+`managerUAPIVersion < kernelUAPIVersion` → 管理器报「需要更新管理器」；反过来报「需要更新内核」。
+build 号（`40994` / `41049`）只是各自发版号，不一致不报警。
 
 ---
 

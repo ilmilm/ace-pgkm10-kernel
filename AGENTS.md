@@ -25,7 +25,8 @@
    KSU 与 susfs 必须**同代升级**，一次只动一个的后果：链接期 undefined symbol，
    或者编得过但 inline hook 静默失效（管理器显示"工作中"，`su` 根本不存在）。
 
-   `KSU_VERSION=40994` 与管理器 `SukiSU_v4.2.1_40994-release.apk` 绑定；改号必须同时换 APK。
+   `KSU_VERSION=40994`（显示 `40994-6`）实测与管理器 `SukiSU_v4.2.1-r1_41049`（`41049-6`）共存无提示。
+   **配对判据是 UAPI，不是 build 号**：只有 `managerUAPIVersion < kernelUAPIVersion` 才报「需要更新管理器」。
 
 2. **7 项 config 一个都不能丢**：`LTO_CLANG_FULL` `CFI_CLANG` `CFI_CLANG_SHADOW`
    `SHADOW_CALL_STACK` `KASAN_HW_TAGS` `MODVERSIONS` `ARM64_4K_PAGES`。
