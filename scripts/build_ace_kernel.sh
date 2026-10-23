@@ -46,7 +46,8 @@ log "toolchain"; clang --version | head -2
 #
 #   KSU    builtin, synced with upstream KernelSU main 2026-10-21
 #   susfs  gki-android12-5.10, KernelSU sync 2026-10-19
-#   KSU_VERSION 40994 == manager 4.2.1 (SukiSU_v4.2.1_40994-release.apk)
+#   KSU_VERSION 40994 (shown as 40994-6); manager v4.2.1-r1 (41049-6) pairs with
+#   it because both report UAPI 6 -- the manager warns on UAPI skew, not build number
 SUSFS_SHA=f43926dc94b8ffbf9b74321313536600f69367b1
 KSU_SHA=ce75122bec7423e0f1fa06e3e9a174085c5231ab
 
