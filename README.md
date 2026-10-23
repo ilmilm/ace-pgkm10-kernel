@@ -6,6 +6,9 @@
 > 本项目是在真机上一步步试错出来的，不是理论推演。每一处补丁地址、每一个枚举值都经过验证，
 > 踩过的坑全部记录在 [`docs/troubleshooting.md`](docs/troubleshooting.md)。
 
+**唯一支持的目标就是上面这一行**（`PGKM10_15.0.0.500` / 内核 `5.10.209`）。其他固件版本不在支持范围，
+也不作为参考；接手的人或 AI 先读 [`AGENTS.md`](AGENTS.md) 再动代码。
+
 ---
 
 ## 成果
@@ -40,7 +43,8 @@ su -c id  →  uid=0(root) gid=0(root) groups=0(root) context=u:r:ksu:s0
 | **[`v1.1`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/v1.1)** | `patched-boot.img` / `patched-vendor_boot.img` / `patched-lk.img` | **产物**，已修改，刷这个拿 root |
 | **[`stock-500`](https://github.com/ilmilm/ace-pgkm10-kernel/releases/tag/stock-500)** | `boot_b.img` / `vendor_boot_b.img` / `lk_b.img` | **原版**，未做任何修改，回滚和重新打包用 |
 
-> `v1.0` 已废弃：那版 `patched-boot.img` 用 1800/5.10.236 源码编的，刷上去会静音，资产已删除。
+> `v1.0` 已整版删除，产物全部下架。**只有 `v1.1` 可用。**
+> 本项目只支持 `PGKM10_15.0.0.500` / 内核 `5.10.209`，不提供、也不再讨论其他固件版本。
 
 ### 产物（`v1.1`）
 
@@ -196,7 +200,7 @@ docs/troubleshooting.md              踩过的坑与排查方法
 
 OPPO 的提权拦截整体失效。副作用是部分检测类 App 可能有反应——但这是拿到 root 的前提。
 
-**4. 内核源码固定到 500 固件对应的提交，不跟分支 HEAD**
+**4. 内核与厂商模块源码固定到 500 固件对应的提交，不跟分支 HEAD**
 
 ```
 kernel  : OnePlusOSS/android_kernel_5.10_oneplus_mt6895
@@ -205,11 +209,11 @@ vendor  : OnePlusOSS/android_vendor_mediatek_kernel_modules_mt6895
           4c1f20261d8d489d3dca5c1dd8ac62db92b89913   PGKM10_15.0.0.500
 ```
 
-**这一点不能马虎。** 那两个仓库的分支 HEAD 是 **1800 固件（内核 5.10.236）**。拿 236 的源码去配 209 的厂商模块，
-`CONFIG_MODVERSIONS` 比对的符号 CRC 会漂移，CRC 变了的模块直接加载失败。
+**这一点不能马虎。** 上游两个仓库的默认分支会随新固件前移，HEAD 不保证是 500，克隆下来直接编就是错的版本。
+`CONFIG_MODVERSIONS=y` 时内核与厂商 `.ko` 要逐个比对符号 CRC，源码与设备固件版本不一致，CRC 就会漂移，
+对不上的模块直接拒绝加载——表现是系统照常启动、KSU 照常工作，但某个硬件静默失效，从现象极难反推。
 
-踩过一次：编 236 出来的内核，系统正常启动、KSU 正常工作，**但完全没有声音**——音频那批 `.ko` 加载失败。
-换回 500 源码即解决。
+**本项目只支持 `PGKM10_15.0.0.500` / 内核 `5.10.209`。** 换固件就重做整套 pin，不要拿别的源码凑。
 
 CI 里有硬断言：内核 `Makefile` 必须是 `5.10.209`，两个仓库的提交信息必须含 `PGKM10_15.0.0.500`，
 不满足直接失败，不会白跑一小时。

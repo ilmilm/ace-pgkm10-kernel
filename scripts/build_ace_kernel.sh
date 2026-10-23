@@ -49,16 +49,17 @@ mkdir -p "$OP"
 log "sources"
 # ===========================================================================
 # PIN THE EXACT FIRMWARE.  Target device firmware is PGKM10_15.0.0.500(CN01),
-# kernel 5.10.209-android12-9-o-gaad6b7fc18f9.
+# kernel 5.10.209-android12-9-o-gaad6b7fc18f9.  That is the ONLY supported
+# target of this repository.
 #
-# `oneplus/mt6895_v_15.0.0_ace` HEAD is the 1800 build (kernel 5.10.236) and the
-# vendor-modules repo HEAD is 1800 too. Building that tree against this device's
+# The upstream repos' default branches move forward with new firmware; HEAD is
+# NOT guaranteed to be 500. Building a non-500 tree against this device's
 # 5.10.209 vendor modules changes exported symbol CRCs; modules whose CRCs moved
 # then refuse to load. The system still boots and KSU still works, so it looks
-# fine until you notice something dead (on this device: all audio).
+# fine until you notice something dead.
 #
 # Both repos are therefore pinned to their PGKM10_15.0.0.500 commits and the
-# checkout is asserted. Never build from a branch head again.
+# checkout is asserted. Never build from a branch head.
 # ===========================================================================
 KERNEL_SHA=3a3edc50a4d410988728d9c4e382afa1abdc42f5   # PGKM10_15.0.0.500 (5.10.209)
 VENDOR_SHA=4c1f20261d8d489d3dca5c1dd8ac62db92b89913   # PGKM10_15.0.0.500
