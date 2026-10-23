@@ -172,7 +172,7 @@ adb shell su -c 'zcat /proc/config.gz | grep -c CONFIG_KSU'   # 期望 0
 | 内核 | `uname -v` |
 |---|---|
 | 原厂 500 | `Sat Feb 8 05:36:32 UTC 2025` |
-| 自编 | `Tue Feb 10 13:50:12 UTC 2026` |
+| 自编 | `Fri Oct 23 05:20:00 UTC 2026` |
 
 看代码就是 `#1 SMP PREEMPT <时间戳>` 这一串。
 

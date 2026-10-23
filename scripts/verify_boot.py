@@ -34,11 +34,19 @@ def main():
     print("== size / header ==")
     chk(len(n) == PART, f"size == {PART}")
     chk(n[:8] == b"ANDROID!", "ANDROID! magic")
-    nks, nrs, nosv, nhs, nhv = struct.unpack_from("<IIIII", n, 8)
-    sks, srs, sosv, shs, shv = struct.unpack_from("<IIIII", s, 8)
-    chk((nosv, nhs, nhv) == (sosv, shs, shv),
-        f"os_version/header_size/header_version match stock "
-        f"(0x{nosv:08x}/{nhs}/{nhv})")
+    nks, nrs, nosv, nhs = struct.unpack_from("<IIII", n, 8)
+    sks, srs, sosv, shs = struct.unpack_from("<IIII", s, 8)
+    chk((nosv, nhs) == (sosv, shs),
+        f"os_version/header_size match stock (0x{nosv:08x}/{nhs})")
+
+    # header_version lives at 0x28 (the old 5-tuple read grabbed reserved[0],
+    # which is always 0 on both sides -> the check could never fail).
+    nhv = struct.unpack_from("<I", n, 0x28)[0]
+    shv = struct.unpack_from("<I", s, 0x28)[0]
+    chk(nhv == shv, f"header_version match stock ({nhv})")
+    nss = struct.unpack_from("<I", n, 0x1C)[0]
+    sss = struct.unpack_from("<I", s, 0x1C)[0]
+    chk(nss == sss == 0, f"no second stage (patched={nss} stock={sss})")
 
     hs, hn = bytearray(s[:PAGE]), bytearray(n[:PAGE])
     for buf in (hs, hn):

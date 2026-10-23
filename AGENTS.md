@@ -19,11 +19,13 @@
    ```
    kernel  3a3edc50a4d410988728d9c4e382afa1abdc42f5   PGKM10_15.0.0.500 (5.10.209)
    vendor  4c1f20261d8d489d3dca5c1dd8ac62db92b89913   PGKM10_15.0.0.500
-   susfs   9892175b4acec7ee844e113b8d02c0f4d12cdfac   gki-android12-5.10
-   ksu     6c284e957feaa9a388a9f1c37dc4ec80d95e434b   builtin
+   susfs   f43926dc94b8ffbf9b74321313536600f69367b1   gki-android12-5.10
+   ksu     ce75122bec7423e0f1fa06e3e9a174085c5231ab   builtin
    ```
-   换任何一个 SHA，都要重新验证；KSU 与 susfs 是配套组合，单独升级会导致 inline hook 静默失效
-   （管理器显示"工作中"，但 `su` 不存在）。
+   KSU 与 susfs 必须**同代升级**，一次只动一个的后果：链接期 undefined symbol，
+   或者编得过但 inline hook 静默失效（管理器显示"工作中"，`su` 根本不存在）。
+
+   `KSU_VERSION=40994` 与管理器 `SukiSU_v4.2.1_40994-release.apk` 绑定；改号必须同时换 APK。
 
 2. **7 项 config 一个都不能丢**：`LTO_CLANG_FULL` `CFI_CLANG` `CFI_CLANG_SHADOW`
    `SHADOW_CALL_STACK` `KASAN_HW_TAGS` `MODVERSIONS` `ARM64_4K_PAGES`。
@@ -60,7 +62,7 @@
 ```bash
 adb shell su -c id                              # uid=0(root) context=u:r:ksu:s0
 adb shell uname -r                              # 5.10.209-android12-9-o-gaad6b7fc18f9
-adb shell uname -v                              # #1 SMP PREEMPT Tue Feb 10 13:50:12 UTC 2026（自编戳）
+adb shell uname -v                              # #1 SMP PREEMPT Fri Oct 23 05:20:00 UTC 2026（自编戳）
 adb shell getprop ro.boot.verifiedbootstate     # green
 adb shell getprop ro.boot.flash.locked          # 1
 adb shell getprop ro.boot.vbmeta.device_state   # locked

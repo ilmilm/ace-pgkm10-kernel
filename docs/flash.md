@@ -49,7 +49,7 @@ adb shell getprop ro.boot.verifiedbootstate   # green
 
 # 第 2 步后：管理器不再报「获取 Root 失败」
 # 第 3 步后：
-adb shell uname -v        # #1 SMP PREEMPT Tue Feb 10 13:50:12 UTC 2026  ← 区分原厂的关键
+adb shell uname -v        # #1 SMP PREEMPT Fri Oct 23 05:20:00 UTC 2026  ← 区分原厂的关键
 adb shell su -c id        # uid=0(root) context=u:r:ksu:s0
 adb shell getprop ro.boot.vbmeta.device_state  # locked
 ```
@@ -59,7 +59,7 @@ adb shell getprop ro.boot.vbmeta.device_state  # locked
 | 内核 | `uname -v` |
 |---|---|
 | 原厂 | `Sat Feb 8 05:36:32 UTC 2025` |
-| 自编 | `Tue Feb 10 13:50:12 UTC 2026` |
+| 自编 | `Fri Oct 23 05:20:00 UTC 2026` |
 
 ## 回滚
 
@@ -105,9 +105,10 @@ fastboot flash boot_b         原版boot_b.img
 
 ## 管理器
 
-装 `SukiSU_v4.2.0_40900-release.apk`。
+装 `SukiSU_v4.2.1_40994-release.apk`。
 
-不要升 4.2.1（40994）：内核报 `40900`，升上去会一直提示有新版本，且版本号对不上。
+内核里编死的 `KSU_VERSION` 必须和这个 build 号一致（现在都是 `40994`）。改内核版本号就要同时换管理器，
+否则会一直提示有新版本。
 
 装完之后打开一次管理器，它需要拿到 root 才会把 `ksud` 装进 `/data/adb/`：
 

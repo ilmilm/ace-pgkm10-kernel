@@ -38,12 +38,17 @@ done
 log "toolchain"; clang --version | head -2
 
 # ------------------------------------------------------------------- sources
-# PINNED.  susfs from 5a3af83e onward references KSU symbols that the builtin
-# branch no longer defines (my_setprocattr / ksu_setup_preinit_file /
-# ksu_preinit_handle_post_execveat) -> ld.lld undefined symbol at vmlinux link.
-# 31eb14ad is the newest susfs patch that is self-consistent with this KSU.
-SUSFS_SHA=9892175b4acec7ee844e113b8d02c0f4d12cdfac
-KSU_SHA=6c284e957feaa9a388a9f1c37dc4ec80d95e434b
+# PINNED PAIR.  KSU and susfs must be from the same generation: the susfs
+# kernel patch adds call sites that the KSU tree has to provide (and vice
+# versa).  A mismatch either fails at vmlinux link (undefined symbol) or --
+# worse -- builds fine but the inline hook silently never fires, so `su`
+# shows nothing at all.  Bump both together, never one at a time.
+#
+#   KSU    builtin, synced with upstream KernelSU main 2026-10-21
+#   susfs  gki-android12-5.10, KernelSU sync 2026-10-19
+#   KSU_VERSION 40994 == manager 4.2.1 (SukiSU_v4.2.1_40994-release.apk)
+SUSFS_SHA=f43926dc94b8ffbf9b74321313536600f69367b1
+KSU_SHA=ce75122bec7423e0f1fa06e3e9a174085c5231ab
 
 mkdir -p "$OP"
 log "sources"
@@ -227,11 +232,11 @@ log "build"
 export KBUILD_BUILD_VERSION=1
 export KBUILD_BUILD_USER=build-user
 export KBUILD_BUILD_HOST=build-host
-export KBUILD_BUILD_TIMESTAMP="Tue Feb 10 13:50:12 UTC 2026"
+export KBUILD_BUILD_TIMESTAMP="Fri Oct 23 05:20:00 UTC 2026"
 rm -f "$O/include/generated/compile.h" "$O/init/version.o" "$O/.version" || true
 echo 1 > "$O/.version"
 
-make -C "$K" O="$O" -j"$(nproc)" KSU_VERSION=${KSU_VERSION:-40900} Image
+make -C "$K" O="$O" -j"$(nproc)" KSU_VERSION=${KSU_VERSION:-40994} Image
 
 log "verify UTS"
 strings "$O/vmlinux" | grep -m1 '^Linux version' || true

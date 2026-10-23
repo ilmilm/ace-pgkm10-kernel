@@ -21,12 +21,12 @@ su -c id  →  uid=0(root) gid=0(root) groups=0(root) context=u:r:ksu:s0
 |---|---|
 | 系统版本 | `PGKM10_15.0.0.500(CN01)` |
 | 内核版本 | `5.10.209-android12-9-o-gaad6b7fc18f9` |
-| 内核编译戳 | `#1 SMP PREEMPT Tue Feb 10 13:50:12 UTC 2026`（伪装） |
+| 内核编译戳 | `#1 SMP PREEMPT Fri Oct 23 05:20:00 UTC 2026`（伪装） |
 | `ro.boot.verifiedbootstate` | **green** |
 | `ro.boot.flash.locked` | **1** |
 | `ro.boot.vbmeta.device_state` | **locked**（LK 强制输出；硬件真实状态仍是 unlocked） |
 | SELinux | **Enforcing**（不需要宽容模式） |
-| KernelSU | `工作中` / `Built-in` / `40900-2` |
+| KernelSU | `工作中` / `Built-in` / `40994` |
 | SuSFS | `v2.3.0 (SUSFS Inline Hook)`，`ksud susfs status` = `true` |
 | `/proc/config.gz` 里 `CONFIG_KSU` | **0 条**（伪造为原厂配置） |
 | `/proc/kallsyms` 里 `ksu_`/`susfs_` | **0 条**（符号隐藏生效） |
@@ -109,10 +109,11 @@ fastboot reboot
 ### 配套管理器
 
 ```
-SukiSU_v4.2.0_40900-release.apk
+SukiSU_v4.2.1_40994-release.apk
 ```
 
-**不要升到 4.2.1 (40994)**：内核报 `40900`，版本对不上会一直提示有新版本。
+**内核里编死的 `KSU_VERSION` 必须和管理器 build 号一致**（现在都是 `40994`）。
+管理器版本高于内核时报"有新版本"，低于内核时部分功能不可用；两者不一致不会影响 `su`，但会一直提示。
 
 ---
 

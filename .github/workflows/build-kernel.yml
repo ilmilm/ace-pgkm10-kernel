@@ -8,7 +8,7 @@ on:
 
 env:
   BRANCH: oneplus/mt6895_v_15.0.0_ace
-  KSU_VERSION: "40900"
+  KSU_VERSION: "40994"
 
 jobs:
   build:
